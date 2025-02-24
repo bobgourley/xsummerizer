@@ -63,10 +63,12 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Handle /api/tweets/:userId/:count with debug logs
+    // Handle /api/tweets/:userId/:count with fixed path parsing
     if (path.startsWith('/api/tweets/') && method === 'GET') {
       console.log('Handling /api/tweets/ for user:', path);
-      const [_, __, userId, count] = path.split('/');
+      const parts = path.split('/');
+      const userId = parts[3]; // "14554287"
+      const count = parts[4];  // "50"
       console.log('Fetching user from MongoDB:', userId);
       const user = await usersCollection.findOne({ userId });
       if (!user || !user.access_token) {
