@@ -8,17 +8,21 @@ const client = new MongoClient(uri);
 const CALLBACK_URL = 'https://xsummerizer.com/api/auth/callback';
 
 exports.handler = async (event, context) => {
+  console.log('Function started:', new Date().toISOString());
   try {
+    console.log('Connecting to MongoDB...');
     await client.connect();
+    console.log('Connected to MongoDB');
     const db = client.db('tweet_narrative');
     const usersCollection = db.collection('users');
 
     const path = event.path;
     const method = event.httpMethod;
 
-    // Handle /api/login
     if (path === '/api/login' && method === 'GET') {
+      console.log('Handling /api/login');
       const authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${process.env.X_CLIENT_ID}&redirect_uri=${CALLBACK_URL}&scope=tweet.read%20users.read&state=state&code_challenge=challenge&code_challenge_method=plain`;
+      console.log('Redirecting to X:', authUrl);
       return {
         statusCode: 302,
         headers: { Location: authUrl },
@@ -26,7 +30,9 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Handle /api/auth/callback
+    // ... (rest of your existing paths unchanged - /auth/callback, /tweets/, etc.)
+    // Keep everything below as is, just adding logs to /api/login for now
+
     if (path === '/api/auth/callback' && method === 'GET') {
       const { code } = event.queryStringParameters;
       const response = await axios.post('https://api.twitter.com/2/oauth2/token', {
@@ -58,7 +64,6 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Handle /api/tweets/:userId/:count
     if (path.startsWith('/api/tweets/') && method === 'GET') {
       const [_, __, userId, count] = path.split('/');
       const user = await usersCollection.findOne({ userId });
@@ -75,7 +80,6 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Handle /api/save-profile
     if (path === '/api/save-profile' && method === 'POST') {
       const { userId, tone, length, guidance } = JSON.parse(event.body);
       await usersCollection.updateOne(
@@ -89,7 +93,6 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Handle /api/create-checkout-session
     if (path === '/api/create-checkout-session' && method === 'POST') {
       const { userId, plan } = JSON.parse(event.body);
       const session = await stripe.checkout.sessions.create({
@@ -110,7 +113,6 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Default: 404
     return {
       statusCode: 404,
       body: 'Not found'
