@@ -19,6 +19,7 @@ exports.handler = async (event, context) => {
     const path = event.path;
     const method = event.httpMethod;
 
+    // Handle /api/login
     if (path === '/api/login' && method === 'GET') {
       console.log('Handling /api/login');
       const authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${process.env.X_CLIENT_ID}&redirect_uri=${CALLBACK_URL}&scope=tweet.read%20users.read&state=state&code_challenge=challenge&code_challenge_method=plain`;
@@ -30,9 +31,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // ... (rest of your existing paths unchanged - /auth/callback, /tweets/, etc.)
-    // Keep everything below as is, just adding logs to /api/login for now
-
+    // Handle /api/auth/callback
     if (path === '/api/auth/callback' && method === 'GET') {
       const { code } = event.queryStringParameters;
       const response = await axios.post('https://api.twitter.com/2/oauth2/token', {
@@ -64,22 +63,29 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Handle /api/tweets/:userId/:count with debug logs
     if (path.startsWith('/api/tweets/') && method === 'GET') {
+      console.log('Handling /api/tweets/ for user:', path);
       const [_, __, userId, count] = path.split('/');
+      console.log('Fetching user from MongoDB:', userId);
       const user = await usersCollection.findOne({ userId });
       if (!user || !user.access_token) {
+        console.log('User not authenticated:', userId);
         return { statusCode: 401, body: 'Not authenticated' };
       }
+      console.log('Fetching tweets from X API for user:', userId, 'count:', count);
       const response = await axios.get(
         `https://api.twitter.com/2/users/${userId}/tweets?max_results=${count}`,
         { headers: { Authorization: `Bearer ${user.access_token}` } }
       );
+      console.log('Tweets fetched successfully:', response.data.data.length);
       return {
         statusCode: 200,
         body: JSON.stringify(response.data.data)
       };
     }
 
+    // Handle /api/save-profile
     if (path === '/api/save-profile' && method === 'POST') {
       const { userId, tone, length, guidance } = JSON.parse(event.body);
       await usersCollection.updateOne(
@@ -93,6 +99,7 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Handle /api/create-checkout-session
     if (path === '/api/create-checkout-session' && method === 'POST') {
       const { userId, plan } = JSON.parse(event.body);
       const session = await stripe.checkout.sessions.create({
@@ -113,6 +120,7 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Default: 404
     return {
       statusCode: 404,
       body: 'Not found'
