@@ -63,22 +63,38 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Handle /api/tweets/:userId/:count with fixed path parsing
+    // Handle /api/tweets/:userId/:count with admin bypass
     if (path.startsWith('/api/tweets/') && method === 'GET') {
       console.log('Handling /api/tweets/ for user:', path);
       const parts = path.split('/');
-      const userId = parts[3]; // "14554287"
-      const count = parts[4];  // "50"
+      const userId = parts[3]; // e.g., "14554287"
+      const count = parts[4];  // e.g., "50"
       console.log('Fetching user from MongoDB:', userId);
       const user = await usersCollection.findOne({ userId });
-      if (!user || !user.access_token) {
+
+      let accessToken;
+      if (userId === '14554287') {
+        // Admin bypass: Use client credentials for @bobgourley
+        console.log('Admin user detected, fetching token with client credentials');
+        const response = await axios.post('https://api.twitter.com/2/oauth2/token', {
+          grant_type: 'client_credentials',
+          client_id: process.env.X_CLIENT_ID,
+          client_secret: process.env.X_CLIENT_SECRET
+        });
+        accessToken = response.data.access_token;
+      } else if (user && user.access_token) {
+        // Regular user: Use stored access token
+        console.log('Using stored access token for user:', userId);
+        accessToken = user.access_token;
+      } else {
         console.log('User not authenticated:', userId);
         return { statusCode: 401, body: 'Not authenticated' };
       }
+
       console.log('Fetching tweets from X API for user:', userId, 'count:', count);
       const response = await axios.get(
         `https://api.twitter.com/2/users/${userId}/tweets?max_results=${count}`,
-        { headers: { Authorization: `Bearer ${user.access_token}` } }
+        { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       console.log('Tweets fetched successfully:', response.data.data.length);
       return {
