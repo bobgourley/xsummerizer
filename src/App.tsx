@@ -14,7 +14,7 @@ function App() {
     if (userIdFromUrl) {
       setUserId(userIdFromUrl);
       setIsLoggedIn(true);
-      setPage('profile');
+      setPage('create');
     }
   }, []);
 
@@ -53,15 +53,9 @@ function BetaLandingPage({ setPage, setIsLoggedIn, setUserId }: BetaLandingPageP
   const [password, setPassword] = useState('');
   const [showBetaMessage, setShowBetaMessage] = useState(false);
 
-  const handlePasswordSubmit = () => {
-    if (password === 'login') {
-      // Simulate admin login for @bobgourley
-      setUserId('14554287');
-      setIsLoggedIn(true);
-      setPage('create');
-    } else {
-      setShowBetaMessage(true);
-    }
+  const handleLogin = async () => {
+    // Trigger X OAuth login instead of password check
+    window.location.href = 'https://xsummerizer.com/api/login';
   };
 
   const handlePayment = async () => {
@@ -82,16 +76,7 @@ function BetaLandingPage({ setPage, setIsLoggedIn, setUserId }: BetaLandingPageP
   return (
     <div>
       <h2>We are in beta mode and are still under development, with features limited to the developers till we are ready to roll out.</h2>
-      <label>
-        Password:
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </label>
-      <br />
-      <button onClick={handlePasswordSubmit}>Login</button>
+      <button onClick={handleLogin}>Login with X</button>
       {showBetaMessage && (
         <div>
           <p>Beta testers only</p>
