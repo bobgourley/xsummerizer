@@ -33,7 +33,9 @@ exports.handler = async (event, context) => {
 
     // Handle /api/auth/callback
     if (path === '/api/auth/callback' && method === 'GET') {
+      console.log('Handling /api/auth/callback');
       const { code } = event.queryStringParameters;
+      console.log('Received code:', code);
       const response = await axios.post('https://api.twitter.com/2/oauth2/token', {
         code,
         grant_type: 'authorization_code',
@@ -47,15 +49,18 @@ exports.handler = async (event, context) => {
         }
       });
       const { access_token } = response.data;
+      console.log('Got access token:', access_token);
       const userResponse = await axios.get('https://api.twitter.com/2/users/me', {
         headers: { Authorization: `Bearer ${access_token}` }
       });
       const userId = userResponse.data.data.id;
+      console.log('Fetched user ID:', userId);
       await usersCollection.updateOne(
         { userId },
         { $set: { access_token, userId } },
         { upsert: true }
       );
+      console.log('User saved to MongoDB:', userId);
       return {
         statusCode: 302,
         headers: { Location: `https://xsummerizer.com/?userId=${userId}` },
@@ -63,7 +68,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Handle /api/tweets/:userId/:count with admin bypass
+    // Handle /api/tweets/:userId/:count
     if (path.startsWith('/api/tweets/') && method === 'GET') {
       console.log('Handling /api/tweets/ for user:', path);
       const parts = path.split('/');
@@ -71,30 +76,14 @@ exports.handler = async (event, context) => {
       const count = parts[4];  // e.g., "50"
       console.log('Fetching user from MongoDB:', userId);
       const user = await usersCollection.findOne({ userId });
-
-      let accessToken;
-      if (userId === '14554287') {
-        // Admin bypass: Use client credentials for @bobgourley
-        console.log('Admin user detected, fetching token with client credentials');
-        const response = await axios.post('https://api.twitter.com/2/oauth2/token', {
-          grant_type: 'client_credentials',
-          client_id: process.env.X_CLIENT_ID,
-          client_secret: process.env.X_CLIENT_SECRET
-        });
-        accessToken = response.data.access_token;
-      } else if (user && user.access_token) {
-        // Regular user: Use stored access token
-        console.log('Using stored access token for user:', userId);
-        accessToken = user.access_token;
-      } else {
+      if (!user || !user.access_token) {
         console.log('User not authenticated:', userId);
         return { statusCode: 401, body: 'Not authenticated' };
       }
-
       console.log('Fetching tweets from X API for user:', userId, 'count:', count);
       const response = await axios.get(
         `https://api.twitter.com/2/users/${userId}/tweets?max_results=${count}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
+        { headers: { Authorization: `Bearer ${user.access_token}` } }
       );
       console.log('Tweets fetched successfully:', response.data.data.length);
       return {
@@ -105,12 +94,14 @@ exports.handler = async (event, context) => {
 
     // Handle /api/save-profile
     if (path === '/api/save-profile' && method === 'POST') {
+      console.log('Handling /api/save-profile');
       const { userId, tone, length, guidance } = JSON.parse(event.body);
       await usersCollection.updateOne(
         { userId },
         { $set: { tone, length, guidance } },
         { upsert: true }
       );
+      console.log('Profile saved for user:', userId);
       return {
         statusCode: 200,
         body: 'Profile saved!'
@@ -119,6 +110,7 @@ exports.handler = async (event, context) => {
 
     // Handle /api/create-checkout-session
     if (path === '/api/create-checkout-session' && method === 'POST') {
+      console.log('Handling /api/create-checkout-session');
       const { userId, plan } = JSON.parse(event.body);
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
@@ -132,6 +124,7 @@ exports.handler = async (event, context) => {
         success_url: `https://xsummerizer.com/success?userId=${userId}`,
         cancel_url: 'https://xsummerizer.com/create'
       });
+      console.log('Checkout session created:', session.id);
       return {
         statusCode: 200,
         body: JSON.stringify({ id: session.id })
@@ -139,6 +132,7 @@ exports.handler = async (event, context) => {
     }
 
     // Default: 404
+    console.log('Path not found:', path);
     return {
       statusCode: 404,
       body: 'Not found'
