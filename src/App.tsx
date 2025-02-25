@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import './App.css';
 
 const stripePromise = import('@stripe/stripe-js').then((module) => module.loadStripe('pk_test_51QuO6NEHF0Ss91IDhLVPUGvLQ3EGfLvJ4mfKSX7MeNw7sT8mWHUcn7VEdvvh4q72aqFp9IX3dIdY2M9K5JkWCRLA001fYDBHT6'));
@@ -50,11 +50,7 @@ interface BetaLandingPageProps {
 }
 
 function BetaLandingPage({ setPage, setIsLoggedIn, setUserId }: BetaLandingPageProps) {
-  const [password, setPassword] = useState('');
-  const [showBetaMessage, setShowBetaMessage] = useState(false);
-
   const handleLogin = async () => {
-    // Trigger X OAuth login instead of password check
     window.location.href = 'https://xsummerizer.com/api/login';
   };
 
@@ -77,12 +73,10 @@ function BetaLandingPage({ setPage, setIsLoggedIn, setUserId }: BetaLandingPageP
     <div>
       <h2>We are in beta mode and are still under development, with features limited to the developers till we are ready to roll out.</h2>
       <button onClick={handleLogin}>Login with X</button>
-      {showBetaMessage && (
-        <div>
-          <p>Beta testers only</p>
-          <button onClick={handlePayment}>Pay $5 to join beta testing</button>
-        </div>
-      )}
+      <div>
+        <p>Beta testers only</p>
+        <button onClick={handlePayment}>Pay $5 to join beta testing</button>
+      </div>
     </div>
   );
 }
