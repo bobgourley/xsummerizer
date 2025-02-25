@@ -4,7 +4,7 @@ import './App.css';
 const stripePromise = import('@stripe/stripe-js').then((module) => module.loadStripe('pk_test_51QuO6NEHF0Ss91IDhLVPUGvLQ3EGfLvJ4mfKSX7MeNw7sT8mWHUcn7VEdvvh4q72aqFp9IX3dIdY2M9K5JkWCRLA001fYDBHT6'));
 
 function App() {
-  const [page, setPage] = useState('login');
+  const [page, setPage] = useState('beta');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userId, setUserId] = useState('');
 
@@ -26,34 +26,78 @@ function App() {
           <nav>
             <button onClick={() => setPage('profile')}>Profile</button>
             <button onClick={() => setPage('create')}>Create</button>
+            {userId === '14554287' && (
+              <button onClick={() => setPage('admin')}>Admin</button>
+            )}
           </nav>
         )}
       </header>
       <main>
-        {page === 'login' && <LoginPage setPage={setPage} setIsLoggedIn={setIsLoggedIn} />}
+        {page === 'beta' && <BetaLandingPage setPage={setPage} setIsLoggedIn={setIsLoggedIn} setUserId={setUserId} />}
         {page === 'profile' && isLoggedIn && <ProfilePage userId={userId} />}
         {page === 'create' && isLoggedIn && <CreatePage userId={userId} />}
         {page === 'success' && isLoggedIn && <SuccessPage setPage={setPage} />}
+        {page === 'admin' && isLoggedIn && userId === '14554287' && <AdminPage />}
       </main>
     </div>
   );
 }
 
-interface LoginPageProps {
+interface BetaLandingPageProps {
   setPage: (page: string) => void;
   setIsLoggedIn: (loggedIn: boolean) => void;
+  setUserId: (userId: string) => void;
 }
 
-function LoginPage({ setPage, setIsLoggedIn }: LoginPageProps) {
-  const handleLogin = () => {
-    window.location.href = 'https://xsummerizer.com/api/login';
+function BetaLandingPage({ setPage, setIsLoggedIn, setUserId }: BetaLandingPageProps) {
+  const [password, setPassword] = useState('');
+  const [showBetaMessage, setShowBetaMessage] = useState(false);
+
+  const handlePasswordSubmit = () => {
+    if (password === 'login') {
+      // Simulate admin login for @bobgourley
+      setUserId('14554287');
+      setIsLoggedIn(true);
+      setPage('create');
+    } else {
+      setShowBetaMessage(true);
+    }
+  };
+
+  const handlePayment = async () => {
+    const response = await fetch('https://xsummerizer.com/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: 'guest', plan: 'single' })
+    });
+    const { id } = await response.json();
+    const stripe = await stripePromise;
+    if (stripe) {
+      await stripe.redirectToCheckout({ sessionId: id });
+    } else {
+      alert('Payment failed—Stripe not available');
+    }
   };
 
   return (
     <div>
-      <h2>Welcome!</h2>
-      <p>Sign in to start turning your tweets into stories!</p>
-      <button onClick={handleLogin}>Login with X</button>
+      <h2>We are in beta mode and are still under development, with features limited to the developers till we are ready to roll out.</h2>
+      <label>
+        Password:
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      </label>
+      <br />
+      <button onClick={handlePasswordSubmit}>Login</button>
+      {showBetaMessage && (
+        <div>
+          <p>Beta testers only</p>
+          <button onClick={handlePayment}>Pay $5 to join beta testing</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -129,7 +173,7 @@ interface CreatePageProps {
 }
 
 function CreatePage({ userId }: CreatePageProps) {
-  const [tweetCount, setTweetCount] = useState('50');
+  const [tweetCount] = useState('50');
   const [tone, setTone] = useState('Welcoming');
   const [length, setLength] = useState('Medium (~500 words)');
   const [guidance, setGuidance] = useState(
@@ -175,7 +219,7 @@ function CreatePage({ userId }: CreatePageProps) {
       <p>Pick your tweets and style—let’s make something exciting!</p>
       <label>
         Tweet Count:
-        <select value={tweetCount} onChange={(e) => setTweetCount(e.target.value)}>
+        <select value={tweetCount} disabled>
           <option>50</option>
           <option>100</option>
         </select>
@@ -240,6 +284,15 @@ function SuccessPage({ setPage }: { setPage: (page: string) => void }) {
   }, [setPage]);
 
   return <div>Payment successful! Redirecting...</div>;
+}
+
+function AdminPage() {
+  return (
+    <div>
+      <h2>Admin Dashboard</h2>
+      <p>Admin features coming soon!</p>
+    </div>
+  );
 }
 
 export default App;
